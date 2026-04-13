@@ -1,21 +1,24 @@
 {
-  "name": "backend",
+  "name": "menucard",
   "version": "1.0.0",
-  "description": "",
+  "description": "Food Ordering System",
   "main": "index.js",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "node service.js"
   },
   "keywords": [],
   "author": "",
   "license": "ISC",
-  "type": "commonjs",
+  "type": "module",
   "dependencies": {
     "axios": "^1.15.0",
     "bcryptjs": "^3.0.3",
     "bootstrap": "^5.3.8",
     "cors": "^2.8.6",
-    "dotenv": "^17.4.1",
+    "dotenv": "^17.4.2",
     "express": "^5.2.1",
     "jsonwebtoken": "^9.0.3",
     "mongoose": "^9.4.1",
@@ -24,6 +27,7 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^6.0.1",
+    "vite": "^8.0.0",
     "nodemon": "^3.1.14"
   }
 }

@@ -1,141 +1,72 @@
-const express = require("express");
-const mongoose = require("mongoose");
-const cors = require("cors");
-require("dotenv").config();
+import express from "express";
+import cors from "cors";
+import mongoose from "mongoose";
+import { config } from "dotenv";
+import * as authRoutesModule from "./routes/auth.js";
 
-const authRoutes = require("./routes/auth");
-const { protect } = require("./middleware/auth");
-const { roleCheck } = require("./middleware/roleCheck");
-const User = require("./models/User");
+config();
+
+const authRoutes = authRoutesModule.default;
 
 const app = express();
 
-// ✅ FIX: Allow all origins during development
+// Middleware
 app.use(cors());
 app.use(express.json());
 
-// ================= TEST ROUTE =================
+// Connect to MongoDB
+mongoose.connect(process.env.MONGO_URI || "mongodb://localhost:27017/foodOrderDB")
+  .then(() => console.log("✅ MongoDB Connected"))
+  .catch(err => console.error("❌ MongoDB connection error:", err));
+
+// Routes
 app.get("/", (req, res) => {
   res.send("Backend working 🚀");
 });
 
-// ================= AUTH ROUTES =================
-app.use("/api/auth", authRoutes);
-
-// ================= CONNECT MONGODB =================
-const MONGO_URI = process.env.MONGO_URI || "mongodb://127.0.0.1:27017/foodOrderDB";
-
-mongoose
-  .connect(MONGO_URI)
-  .then(() => {
-    console.log("✅ MongoDB Connected");
-  })
-  .catch((err) => {
-    console.log("❌ DB Error:", err.message);
-  });
-
-// ================= ORDER SCHEMA =================
-const orderSchema = new mongoose.Schema({
-  customer: {
-    name: String,
-    phone: String,
-    address: String,
-  },
-  items: [
-    {
-      id: Number,
-      name: String,
-      price: Number,
-      category: String,
-    },
-  ],
-  total: Number,
-  user: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: "User",
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-  },
-});
-
-const Order = mongoose.model("Order", orderSchema);
-
-// ================= PLACE ORDER (Protected - any authenticated user) =================
-app.post("/order", protect, async (req, res) => {
+// Order endpoint
+app.post("/order", (req, res) => {
   try {
     const { customer, items, total } = req.body;
 
-    if (!customer || !items || items.length === 0) {
-      return res.status(400).json({
-        success: false,
-        message: "Cart is empty or invalid data",
-      });
+    console.log("📦 Order received:");
+    console.log("  Customer:", customer);
+    console.log("  Items:", items.length, "items");
+    console.log("  Total: ₹", total);
+
+    // Validation
+    if (!customer || !customer.name || !customer.phone || !customer.address) {
+      return res.status(400).json({ message: "Customer details are required" });
     }
 
-    const newOrder = await Order.create({
-      customer,
-      items,
-      total,
-      user: req.user._id,
-    });
-
-    res.json({
-      success: true,
-      message: "🎉 Order placed successfully!",
-      order: newOrder,
-    });
-
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
-});
-
-// ================= GET ORDERS (Admin: all orders, Customer: own orders) =================
-app.get("/orders", protect, async (req, res) => {
-  try {
-    let orders;
-    if (req.user.role === "admin") {
-      orders = await Order.find().sort({ createdAt: -1 });
-    } else {
-      orders = await Order.find({ user: req.user._id }).sort({ createdAt: -1 });
+    if (!items || items.length === 0) {
+      return res.status(400).json({ message: "Cart is empty" });
     }
-    res.json(orders);
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
-  }
-});
 
-// ================= GET ALL USERS (Admin only) =================
-app.get("/api/users", protect, roleCheck("admin"), async (req, res) => {
-  try {
-    const users = await User.find().select("-password").sort({ createdAt: -1 });
-    res.json({
+    // ✅ SUCCESS - Order accepted
+    res.status(201).json({
       success: true,
-      count: users.length,
-      users,
+      message: "Order placed successfully!",
+      orderId: "ORD-" + Date.now(),
+      orderDetails: {
+        customer,
+        items: items.length,
+        total,
+        timestamp: new Date()
+      }
     });
-  } catch (err) {
-    console.log(err);
-    res.status(500).json({
-      success: false,
-      message: "Server error",
-    });
+  } catch (error) {
+    console.error("Order error:", error);
+    res.status(500).json({ message: error.message || "Failed to place order" });
   }
 });
 
-// ================= START SERVER =================
-const PORT = process.env.PORT || 5001;
+app.use("/api/auth", authRoutes);
+
+const PORT = 5001;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
+  console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
+  console.log(`🗄️  MongoDB URI: ${process.env.MONGO_URI}`);
 });

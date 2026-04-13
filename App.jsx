@@ -2,7 +2,10 @@ import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-const API_URL = "http://localhost:5001";
+// Determine API URL based on environment
+const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
+  ? "http://localhost:5001"
+  : "";
 
 function App() {
   // Auth state
@@ -40,7 +43,7 @@ function App() {
     setAuthError("");
     setAuthLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/auth/login`, {
+      const res = await axios.post(`${API_URL}/api/auth?action=login`, {
         email: authForm.email,
         password: authForm.password,
       });
@@ -61,7 +64,7 @@ function App() {
     setAuthError("");
     setAuthLoading(true);
     try {
-      const res = await axios.post(`${API_URL}/api/auth/register`, {
+      const res = await axios.post(`${API_URL}/api/auth?action=register`, {
         name: authForm.name,
         email: authForm.email,
         password: authForm.password,
@@ -168,7 +171,7 @@ const confirmOrder = async () => {
 
     console.log("Sending:", payload);
 
-    const res = await axios.post(`${API_URL}/order`, payload);
+    const res = await axios.post(`${API_URL}/api/order`, payload);
 
     // ✅ SUCCESS ALERT WITH ORDER DETAILS
     alert(
