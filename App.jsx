@@ -7,7 +7,7 @@ const API_URL = "http://localhost:5001";
 function App() {
   // Auth state
   const [token, setToken] = useState(localStorage.getItem("token") || "");
-  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
+  const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem("user") || "null"); } catch { return null; } });
   const [authPage, setAuthPage] = useState("login"); // "login" or "register"
   const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
   const [authError, setAuthError] = useState("");
@@ -25,13 +25,30 @@ function App() {
     address: ""
   });
 
-  // Set up axios default auth header when token changes
+  // Set up axios default auth header and 401 interceptor when token changes
   useEffect(() => {
     if (token) {
       axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
     } else {
       delete axios.defaults.headers.common["Authorization"];
     }
+
+    // Auto-logout on 401 responses (expired/invalid token)
+    const interceptor = axios.interceptors.response.use(
+      (response) => response,
+      (error) => {
+        if (error?.response?.status === 401 && token) {
+          setToken("");
+          setUser(null);
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          setCart([]);
+        }
+        return Promise.reject(error);
+      }
+    );
+
+    return () => axios.interceptors.response.eject(interceptor);
   }, [token]);
 
   // ================= AUTH FUNCTIONS =================
