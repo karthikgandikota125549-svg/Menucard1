@@ -1,14 +1,23 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
+const API_URL = "http://localhost:5001";
 
 function App() {
+  // Auth state
+  const [token, setToken] = useState(localStorage.getItem("token") || "");
+  const [user, setUser] = useState(JSON.parse(localStorage.getItem("user") || "null"));
+  const [authPage, setAuthPage] = useState("login"); // "login" or "register"
+  const [authForm, setAuthForm] = useState({ name: "", email: "", password: "" });
+  const [authError, setAuthError] = useState("");
+  const [authLoading, setAuthLoading] = useState(false);
+
+  // Menu state
   const [search, setSearch] = useState("");
   const [category, setCategory] = useState("All");
   const [cart, setCart] = useState([]);
   const [showOrderForm, setShowOrderForm] = useState(false);
-
 
   const [customer, setCustomer] = useState({
     name: "",
@@ -16,7 +25,67 @@ function App() {
     address: ""
   });
 
-  
+  // Set up axios default auth header when token changes
+  useEffect(() => {
+    if (token) {
+      axios.defaults.headers.common["Authorization"] = `Bearer ${token}`;
+    } else {
+      delete axios.defaults.headers.common["Authorization"];
+    }
+  }, [token]);
+
+  // ================= AUTH FUNCTIONS =================
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const res = await axios.post(`${API_URL}/api/auth/login`, {
+        email: authForm.email,
+        password: authForm.password,
+      });
+      const { token: newToken, user: userData } = res.data;
+      setToken(newToken);
+      setUser(userData);
+      localStorage.setItem("token", newToken);
+      localStorage.setItem("user", JSON.stringify(userData));
+      setAuthForm({ name: "", email: "", password: "" });
+    } catch (err) {
+      setAuthError(err?.response?.data?.message || "Login failed");
+    }
+    setAuthLoading(false);
+  };
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setAuthError("");
+    setAuthLoading(true);
+    try {
+      const res = await axios.post(`${API_URL}/api/auth/register`, {
+        name: authForm.name,
+        email: authForm.email,
+        password: authForm.password,
+      });
+      const { token: newToken, user: userData } = res.data;
+      setToken(newToken);
+      setUser(userData);
+      localStorage.setItem("token", newToken);
+      localStorage.setItem("user", JSON.stringify(userData));
+      setAuthForm({ name: "", email: "", password: "" });
+    } catch (err) {
+      setAuthError(err?.response?.data?.message || "Registration failed");
+    }
+    setAuthLoading(false);
+  };
+
+  const handleLogout = () => {
+    setToken("");
+    setUser(null);
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+    setCart([]);
+  };
+
 const MENU_ITEMS = [
   { id: 1, name: "Pepperoni Pizza", price: 12.99, category: "Pizza", image: "https://pplx-res.cloudinary.com/image/upload/pplx_search_images/767e8a3eff44e4fd65e42f72b1172d754776bd60.jpg" },
   { id: 2, name: "Chicken Pizza", price: 14.99, category: "Pizza", image: "https://pplx-res.cloudinary.com/image/upload/pplx_search_images/11f64022920e67e70bfce7f5652e8f218805964f.jpg" },
@@ -99,7 +168,7 @@ const confirmOrder = async () => {
 
     console.log("Sending:", payload);
 
-    const res = await axios.post("http://localhost:5001/order", payload);
+    const res = await axios.post(`${API_URL}/order`, payload);
 
     // ✅ SUCCESS ALERT WITH ORDER DETAILS
     alert(
@@ -127,11 +196,115 @@ const confirmOrder = async () => {
   }
 };
 
+  // ================= LOGIN / REGISTER PAGE =================
+  if (!token) {
+    return (
+      <div className="container py-5">
+        <div className="row justify-content-center">
+          <div className="col-md-5">
+            <div className="card shadow">
+              <div className="card-body p-4">
+                <h2 className="text-center mb-4">🍔 Food Ordering System</h2>
+                <h4 className="text-center mb-3">
+                  {authPage === "login" ? "Login" : "Register"}
+                </h4>
+
+                {authError && (
+                  <div className="alert alert-danger py-2">{authError}</div>
+                )}
+
+                <form onSubmit={authPage === "login" ? handleLogin : handleRegister}>
+                  {authPage === "register" && (
+                    <input
+                      className="form-control mb-3"
+                      type="text"
+                      placeholder="Full Name"
+                      value={authForm.name}
+                      onChange={(e) => setAuthForm({ ...authForm, name: e.target.value })}
+                      required
+                    />
+                  )}
+
+                  <input
+                    className="form-control mb-3"
+                    type="email"
+                    placeholder="Email"
+                    value={authForm.email}
+                    onChange={(e) => setAuthForm({ ...authForm, email: e.target.value })}
+                    required
+                  />
+
+                  <input
+                    className="form-control mb-3"
+                    type="password"
+                    placeholder="Password"
+                    value={authForm.password}
+                    onChange={(e) => setAuthForm({ ...authForm, password: e.target.value })}
+                    required
+                    minLength={6}
+                  />
+
+                  <button
+                    className="btn btn-primary w-100"
+                    type="submit"
+                    disabled={authLoading}
+                  >
+                    {authLoading
+                      ? "Please wait..."
+                      : authPage === "login"
+                      ? "Login"
+                      : "Register"}
+                  </button>
+                </form>
+
+                <p className="text-center mt-3 mb-0">
+                  {authPage === "login" ? (
+                    <>
+                      Don't have an account?{" "}
+                      <span
+                        className="text-primary"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => { setAuthPage("register"); setAuthError(""); }}
+                      >
+                        Register
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Already have an account?{" "}
+                      <span
+                        className="text-primary"
+                        style={{ cursor: "pointer" }}
+                        onClick={() => { setAuthPage("login"); setAuthError(""); }}
+                      >
+                        Login
+                      </span>
+                    </>
+                  )}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ================= MAIN APP (AUTHENTICATED) =================
   return (
     <div className="container py-4">
 
-
-      <h2 className="text-center">🍔 Food Ordering System</h2>
+      {/* NAVBAR WITH USER INFO AND LOGOUT */}
+      <div className="d-flex justify-content-between align-items-center mb-3">
+        <h2 className="mb-0">🍔 Food Ordering System</h2>
+        <div className="d-flex align-items-center gap-2">
+          <span className="badge bg-secondary">{user?.role}</span>
+          <span className="fw-bold">{user?.name}</span>
+          <button className="btn btn-outline-danger btn-sm" onClick={handleLogout}>
+            Logout
+          </button>
+        </div>
+      </div>
 
 
       <input
@@ -180,7 +353,7 @@ const confirmOrder = async () => {
       </div>
 
 
-      {/* MODAL */}
+      {/* ORDER MODAL */}
       {showOrderForm && (
         <div className="position-fixed top-0 start-0 w-100 h-100 bg-dark bg-opacity-50 d-flex justify-content-center align-items-center">
 
