@@ -1,7 +1,0 @@
-◇ injected env (3) from .env // tip: ⌁ auth for agents [www.vestauth.com]
-🚀 Server running on http://localhost:5001
-📡 Environment: development
-🗄️  MongoDB URI: mongodb://127.0.0.1:27017/foodOrderDB
-✅ MongoDB Connected
-📝 Register request received: { email: 'test@gmail.com', name: 'test', password: '123456' }
-📝 Register request received: { name: 'abcd', email: 'abcd@gmail.com', password: '1111111' }
