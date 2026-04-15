@@ -3,7 +3,10 @@ import bcryptjs from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 
 const MONGO_URI = process.env.MONGO_URI || 'mongodb://localhost:27017/foodOrderDB';
-const JWT_SECRET = process.env.JWT_SECRET || 'secret-key';
+const JWT_SECRET = process.env.JWT_SECRET;
+if (!JWT_SECRET) {
+  throw new Error('FATAL: JWT_SECRET environment variable is not set. Server cannot start without it.');
+}
 
 // User Schema
 const userSchema = new mongoose.Schema({
@@ -33,7 +36,13 @@ async function connectDB() {
 
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Credentials', 'true');
-  res.setHeader('Access-Control-Allow-Origin', '*');
+  const allowedOrigins = process.env.CORS_ORIGIN
+    ? process.env.CORS_ORIGIN.split(',')
+    : ['http://localhost:5173', 'http://localhost:3000'];
+  const origin = req.headers.origin;
+  if (allowedOrigins.includes(origin)) {
+    res.setHeader('Access-Control-Allow-Origin', origin);
+  }
   res.setHeader('Access-Control-Allow-Methods', 'GET,OPTIONS,PATCH,DELETE,POST,PUT');
   res.setHeader('Access-Control-Allow-Headers', 'X-CSRF-Token, X-Requested-With, Accept, Accept-Version, Content-Length, Content-MD5, Content-Type, Date, X-Api-Version');
 
@@ -96,7 +105,7 @@ async function handleRegister(req, res) {
     });
   } catch (error) {
     console.error('Registration error:', error.message);
-    res.status(500).json({ message: error.message || 'Registration failed' });
+    res.status(500).json({ message: 'Registration failed' });
   }
 }
 

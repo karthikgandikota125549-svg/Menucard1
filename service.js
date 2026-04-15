@@ -11,7 +11,23 @@ const authRoutes = authRoutesModule.default;
 const app = express();
 
 // Middleware
-app.use(cors());
+const allowedOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',')
+  : ['http://localhost:5173', 'http://localhost:3000'];
+
+app.use(cors({
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc.) in development
+    if (!origin && process.env.NODE_ENV !== 'production') {
+      return callback(null, true);
+    }
+    if (allowedOrigins.includes(origin)) {
+      return callback(null, true);
+    }
+    return callback(new Error('Not allowed by CORS'));
+  },
+  credentials: true
+}));
 app.use(express.json());
 
 // Connect to MongoDB
@@ -29,21 +45,18 @@ app.post("/order", (req, res) => {
   try {
     const { customer, items, total } = req.body;
 
-    console.log("📦 Order received:");
-    console.log("  Customer:", customer);
-    console.log("  Items:", items.length, "items");
-    console.log("  Total: ₹", total);
-
-    // Validation
+    // Validation — check before accessing properties
     if (!customer || !customer.name || !customer.phone || !customer.address) {
       return res.status(400).json({ message: "Customer details are required" });
     }
 
-    if (!items || items.length === 0) {
+    if (!Array.isArray(items) || items.length === 0) {
       return res.status(400).json({ message: "Cart is empty" });
     }
 
-    // ✅ SUCCESS - Order accepted
+    console.log("📦 Order received: %d items, total: ₹%s", items.length, total);
+
+    // SUCCESS - Order accepted
     res.status(201).json({
       success: true,
       message: "Order placed successfully!",
@@ -57,16 +70,15 @@ app.post("/order", (req, res) => {
     });
   } catch (error) {
     console.error("Order error:", error);
-    res.status(500).json({ message: error.message || "Failed to place order" });
+    res.status(500).json({ message: "Failed to place order" });
   }
 });
 
 app.use("/api/auth", authRoutes);
 
-const PORT = 5001;
+const PORT = process.env.PORT || 5001;
 
 app.listen(PORT, () => {
   console.log(`🚀 Server running on http://localhost:${PORT}`);
   console.log(`📡 Environment: ${process.env.NODE_ENV || "development"}`);
-  console.log(`🗄️  MongoDB URI: ${process.env.MONGO_URI}`);
 });

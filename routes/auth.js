@@ -20,7 +20,6 @@ const User = mongoose.models.User || mongoose.model("User", userSchema);
 // Register
 router.post("/register", async (req, res) => {
   try {
-    console.log("📝 Register request received:", req.body);
     const { name, email, password } = req.body;
 
     // Validation
@@ -50,7 +49,7 @@ router.post("/register", async (req, res) => {
     // Generate token
     const token = jwt.sign(
       { id: newUser._id, email: newUser.email },
-      process.env.JWT_SECRET || "secret-key",
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
@@ -64,8 +63,7 @@ router.post("/register", async (req, res) => {
     });
   } catch (error) {
     console.error("Registration error:", error.message);
-    console.error("Full error:", error);
-    res.status(500).json({ message: error.message || "Registration failed" });
+    res.status(500).json({ message: "Registration failed" });
   }
 });
 
@@ -90,7 +88,7 @@ router.post("/login", async (req, res) => {
 
     const token = jwt.sign(
       { id: user._id, email: user.email },
-      process.env.JWT_SECRET || "secret-key",
+      process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
 
