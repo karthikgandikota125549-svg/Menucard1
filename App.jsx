@@ -2,10 +2,8 @@ import React, { useState, useMemo, useEffect } from "react";
 import axios from "axios";
 import "bootstrap/dist/css/bootstrap.min.css";
 
-// Determine API URL based on environment
-const API_URL = typeof window !== 'undefined' && window.location.hostname === 'localhost'
-  ? "http://localhost:5001"
-  : "";
+// Use the REACT_APP_API_URL environment variable for the API URL
+const API_URL = import.meta.env.REACT_APP_API_URL || "";
 
 function App() {
   // Auth state
